@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Интерактивная карта музея «Чернобыль: боль и возрождение»</title>
+
+<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&apikey=YOUR_API_KEY" type="text/javascript"></script>
+
+<style>
+  body { margin: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #1a1a1a; color: #eee; }
+  header {
+    background: linear-gradient(135deg, #2c3e50, #4a2c2c);
+    padding: 15px 20px; text-align: center; border-bottom: 3px solid #c0392b;
+  }
+  header h1 { margin: 0; font-size: 20px; letter-spacing: 1px; }
+  header p { margin: 5px 0 0; font-size: 13px; color: #bbb; }
+  #map { height: calc(100vh - 140px); width: 100%; }
+  .legend {
+    position: absolute; bottom: 30px; right: 10px; z-index: 1000;
+    background: rgba(20,20,20,0.9); padding: 12px 15px; border-radius: 8px;
+    font-size: 13px; border: 1px solid #555; max-width: 220px;
+  }
+  .legend h4 { margin: 0 0 8px; font-size: 14px; color: #f39c12; }
+  .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; margin-right: 8px; border: 2px solid #fff; }
+  .footer {
+    text-align: center; padding: 10px; font-size: 12px; color: #888;
+    background: #111; border-top: 1px solid #333;
+  }
+
+  /* === HOVER- displayКАР:ТОЧКА === */
+  .hover-card flex {
+    background: rgba(15;, 15, 20 align, 0.96);
+    border: 2px solid #c0392b;
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #fff;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+    max-width: 280px;
+    animation: fadeIn 0.25s ease;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .hover-card .avatar {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, #c0392b, #8e44ad);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; flex-shrink: 0;
+    border: 2px solid #fff;
+    overflow: hidden;
+  }
+  .hover-card .avatar img {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .hover-card .info h4 {
+    margin: 0 0 3px; font-size: 13px; color: #f39c12;
+  }
+  .hover-card .info p {
+    margin: 0; font-size: 11px; color: #ccc; line-height: 1.3;
+  }
+  .hover-card .badge {
+    display: inline-block; margin-top: 4px;
+    font-size: 9px; padding: 2px 6px; border-radius: 8px;
+    background: #c0392b; color: #fff; text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .hover-card.liquidator { border-color: #2980b9; }
+  .hover-card.liquidator .badge { background: #2980b9; }
+  .hover-card.alley { border-color: #27ae60; }
+  .hover-card.alley .badge { background: #27ae60; }
+  .hover-card.school { border-color: #f39c12; }
+  .hover-card.school .badge { background: #f39c12; }
+
+  /* === ССЫЛКА В HOVER-КАРТОЧКЕ === */
+  .hover-card .museum-link {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 5px 12px;
+    background: linear-gradient(135deg, #c0392b, #8e44ad);
+    color: #fff !important;
+    text-decoration: none !important;
+    font-size: 11px;
+    font-weight: bold;
+    border-radius: 15px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(192, 57, 43, 0.5);
+  }
+  .hover-card .museum-link:hover {
+    transform: scale(1.08);
+    box-shadow: 0 4px 14px rgba(192, 57, 43, 0.8);
+    color: #fff !important;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* === ПОЛНАЯ КАРТОЧКА (клик) === */
+  .popup-content { max-width: 300px; }
+  .popup-content .popup-photo {
+    width: 100%; height: 180px; object-fit: cover;
+    border-radius: 8px; margin-bottom: 10px;
+    border: 2px solid #c0392b;
+  }
+  .popup-content .popup-header {
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 8px;
+  }
+  .popup-content .popup-avatar {
+    width: 50px; height: 50px; border-radius: 50%;
+	background: linear-gradient(135deg, #c0392b, #8e44ad);
+   -items: center; justify-content: center;
+    font-size: 24px; color: #fff; flex-shrink: 0;
+    overflow: hidden;
+  }
+  .popup-content .popup-avatar img {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .popup-content h3 { margin: 0; font-size: 15px; color: #c0392b; }
+  .popup-content p { margin: 4px 0; font-size: 13px; line-height: 1.4; color: #333; }
+  .popup-content .tag {
+    display: inline-block; background: #c0392b; color: #fff;
+    padding: 3px 10px; border-radius: 10px; font-size: 11px; margin-top: 6px;
+  }
+  .popup-content .tag.blue { background: #2980b9; }
+  .popup-content .tag.green { background: #27ae60; }
+  .popup-content .tag.orange { background: #f39c12; }
+
+  /* === КНОПКА В ПОЛНОЙ КАРТОЧКЕ === */
+  .popup-content .museum-btn {
+    display: block;
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #c0392b, #8e44ad);
+    color: #fff !important;
+    text-decoration: none !important;
+    font-size: 13px;
+    font-weight: bold;
+    text-align: center;
+    border-radius: 8px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 3px 10px rgba(192, 57, 43, 0.4);
+  }
+  .popup-content .museum-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 16px rgba(192, 57, 43, 0.7);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🕯️ Чернобыль: боль и возрождение. 40 лет памяти</h1>
+  <p>Интерактивная карта школьного музея ГУО «Средняя школа №56 г. Минска имени В.И. Игнатенко»</p>
+</header>
+
+<div id="map"></div>
+
+<div class="legend">
+  <h4>Легенда</h4>
+  <div class="legend-item"><div class="dot" style="background:#c0392b;"></div> Герой В.И. Игнатенко</div>
+  <div class="legend-item"><div class="dot" style="background:#2980b9;"></div> Ликвидаторы школы №56</div>
+  <div class="legend-item"><div class="dot" style="background:#27ae60;"></div> Аллея памяти</div>
+  <div class="legend-item"><div class="dot" style="background:#f39c12;"></div> Школа №56 / музей</div>
+  <div class="legend-item"><div class="dot" style="background:#8e44ad;"></div> Зона отчуждения</div>
+</div>
+
+<div class="footer">
+  ГУО «Средняя школа №56 г. Минска имени В.И. Игнатенко» · Проект «От памяти к возрождению»
+</div>
+
+<script>
+// ========== ЗАМЕНИТЕ НА АДРЕС ВАШЕГО ВИРТУАЛЬНОГО МУЗЕЯ ==========
+const MUSEUM_URL = "https://sch56.minsk.edu.by/ru/main.aspx?guid=115813";
+
+ymaps.ready(init);
+
+function init() {
+  var myMap = new ymaps.Map("map", {
+    center: [53.5, 28.5],
+    zoom: 7,
+    controls: ['zoomControl', 'fullscreenControl']
+  });
+
+  function avatarHTML(photo, fallbackIcon) {
+    if (photo && photo !== '') {
+      return '<img src="' + photo + '" alt="" onerror="this.parentNode.innerHTML=\'' + fallbackIcon + '\'">';
+    }
+    return fallbackIcon;
+  }
+
+  function createHoverCard(photo, icon, title, subtitle, type, showLink) {
+    var cls = 'hover-card';
+    if (type === 'liquidator') cls += ' liquidator';
+    if (type === 'alley') cls += ' alley';
+    if (type === 'school') cls += ' school';
+
+    var badgeText = type === 'hero' ? 'Герой' :
+                    type === 'liquidator' ? 'Ликвидатор' :
+                    type === 'alley' ? 'Память' : 'Школа';
+
+    var linkHTML = showLink
+      ? '<a class="museum-link" href="' + MUSEUM_URL + '" target="_blank" onclick="event.stopPropagation();">🏛️ Открыть музей</a>'
+      : '';
+
+    return '<div class="' + cls + '">' +
+             '<div class="avatar">' + avatarHTML(photo, icon) + '</div>' +
+             '<div class="info">' +
+               '<h4>' + title + '</h4>' +
+               '<p>' + subtitle + '</p>' +
+               '<span class="badge">' + badgeText + '</span>' +
+               linkHTML +
+             '</div>' +
+           '</div>';
+  }
+
+  // ========== ГЕРОЙ В.И. ИГНАТЕНКО ==========
+  var heroPlaces = [
+    { coords: [51.7833, 30.2167], title: "Спярижье", icon: "🏡",
+      photo: "images/ignatenko.jpg",
+      hint: "Родина героя. Родился 13.03.1961.",
+      desc: "Родина В.И. Игнатенко. Здесь он родился 13.03.1961, окончил 8 классов школы." },
+    { coords: [51.7833, 30.2500], title: "Брагин", icon: "🕯️",
+      photo: "images/ignatenko_family.jpg",
+      hint: "Мемориальная доска. Ежегодный митинг.",
+      desc: "Районный центр. Здесь установлена мемориальная доска В.И. Игнатенко, проходит ежегодный митинг." },
+    { coords: [51.4056, 30.0547], title: "Припять", icon: "🚒",
+      photo: "images/ignatenko.jpg",
+      hint: "СВПЧ-6. Ночь на 26.04.1986.",
+      desc: "СВПЧ-6, где служил В.И. Игнатенко. В ночь на 26.04.1986 он тушил пожар на 4-м энергоблоке ЧАЭС." },
+    { coords: [53.8167, 28.9833], title: "Березино", icon: "🏛️",
+      photo: "images/memorial.jpg",
+      hint: "Встреча с сестрой Н.И. Игнатенко.",
+      desc: "Мемориальная доска В.И. Игнатенко. Здесь живёт его сестра Н.И. Игнатенко." },
+    { coords: [53.9006, 27.5590], title: "Минск, ул. Игнатенко", icon: "🌆",
+      photo: "images/memorial.jpg",
+      hint: "Улица имени героя. Мемориальная доска.",
+      desc: "Улица имени В.И. Игнатенко с мемориальной доской. Учащиеся школы ежегодно возлагают цветы." }
+  ];
+
+  heroPlaces.forEach(function(p) {
+    var placemark = new ymaps.Placemark(p.coords, {
+      balloonContent: '<div class="popup-content">' +
+        (p.photo ? '<img class="popup-photo" src="' + p.photo + '" onerror="this.style.display=\'none\'">' : '') +
+        '<div class="popup-header">' +
+          '<div class="popup-avatar">' + avatarHTML(p.photo, p.icon) + '</div>' +
+          '<h3>' + p.title + '</h3>' +
+        '</div>' +
+        '<p>' + p.desc + '</p>' +
+        '<span class="tag">Герой В.И. Игнатенко</span>' +
+      '</div>',
+      hintContent: createHoverCard(p.photo, p.icon, p.title, p.hint, 'hero', false)
+    }, { preset: 'islands#redIcon' });
+    myMap.geoObjects.add(placemark);
+  });
+
+  // ========== 14 ЛИКВИДАТОРОВ ==========
+  var liquidators = [
+    { coords: [53.0167, 27.0667], name: "Бортник Н.И.", years: "1955", icon: "🛡️", photo: "images/bortnik.jpg",
+      hint: "Охранял д. Тешково", desc: "Дедушка Бортник А.Н., учителя математики." },
+    { coords: [53.0333, 26.2333], name: "Василько А.П.", years: "1941–2017", icon: "⚕️", photo: "images/vasilko.jpg",
+      hint: "Врач в Брагинском р-не", desc: "Отец Василько Л.А., учителя химии." },
+    { coords: [43.1167, 131.9000], name: "Егоров Н.Ф.", years: "1944", icon: "🎖️", photo: "images/egorov.jpg",
+      hint: "Военный, участник ликвидации", desc: "Дедушка Данисевич В.А., 10 «А»." },
+    { coords: [54.0167, 30.2667], name: "Лепешинский А.П.", years: "1941", icon: "⚕️", photo: "images/lepeshinsky.jpg",
+      hint: "Медик, работал в зоне", desc: "Дедушка Скалабана А.И., учителя математики." },
+    { coords: [53.3167, 28.7833], name: "Михневич В.П.", years: "1953–2016", icon: "🛡️", photo: "images/mikhnevich.jpg",
+      hint: "Участник ликвидации", desc: "Дедушка Андреевой П.А., 7 «А»." },
+    { coords: [52.1333, 29.3333], name: "Павлов В.К.", years: "1941–2018", icon: "🛡️", photo: "images/pavlov.jpg",
+      hint: "Участник ликвидации", desc: "Отец Альховик И.В., учителя начальных классов." },
+    { coords: [52.6167, 27.5000], name: "Перепечко В.А.", years: "1962", icon: "👮", photo: "images/perepechko.jpg",
+      hint: "Доставал людей из подвалов", desc: "Родственник Базык Е.Д., учащейся." },
+    { coords: [53.9006, 27.5590], name: "Плашкевич С.М.", years: "1965", icon: "👮", photo: "images/plashkevich.jpg",
+      hint: "Охранял г. Брагин", desc: "Дядя Сундуковой С.В." },
+    { coords: [51.8167, 29.1500], name: "Рабчинский В.В.", years: "1952", icon: "🌾", photo: "images/rabchinsky.jpg",
+      hint: "Почётный знак ликвидатора", desc: "Дедушка Барисик З.А., 9 «Л»." },
+    { coords: [53.5000, 28.1500], name: "Рощин Н.Н.", years: "1958–2009", icon: "🎖️", photo: "images/roshchin.jpg",
+      hint: "Участник ликвидации", desc: "Дедушка Рощина А., 6 «Г»." },
+    { coords: [54.0833, 28.5167], name: "Рутко Н.И.", years: "1961", icon: "🚜", photo: "images/rutko.jpg",
+      hint: "Тракторист-шофёр", desc: "Дедушка Рутко П.А., 6 «З»." },
+    { coords: [54.0333, 28.2667], name: "Сушкевич В.Т.", years: "1948–2009", icon: "🛡️", photo: "images/sushkevich.jpg",
+      hint: "Участник ликвидации", desc: "Дедушка Милько А.Г., 6 «А»." },
+    { coords: [53.9006, 27.5590], name: "Якимович Т.С.", years: "1945", icon: "📐", photo: "images/yakimovich.jpg",
+      hint: "Инженер «Белжилпроект»", desc: "Мать Соломухи И.В., секретаря учебной части." },
+    { coords: [52.1167, 26.1000], name: "Вырковский В.Н.", years: "1964–2018", icon: "🚛", photo: "images/vyrkovsky.jpg",
+      hint: "Воин-интернационалист", desc: "Дядя Шамко А.В., учителя биологии." }
+  ];
+
+  liquidators.forEach(function(p) {
+    var placemark = new ymaps.Placemark(p.coords, {
+      balloonContent: '<div class="popup-content">' +
+        (p.photo ? '<img class="popup-photo" src="' + p.photo + '" onerror="this.style.display=\'none\'">' : '') +
+        '<div class="popup-header">' +
+          '<div class="popup-avatar">' + avatarHTML(p.photo, p.icon) + '</div>' +
+          '<h3>' + p.name + ' <small>(' + p.years + ')</small></h3>' +
+        '</div>' +
+        '<p>' + p.desc + '</p>' +
+        '<span class="tag blue">Ликвидатор школы №56</span>' +
+      '</div>',
+      hintContent: createHoverCard(p.photo, p.icon, p.name + ' (' + p.years + ')', p.hint, 'liquidator', false)
+    }, { preset: 'islands#blueIcon' });
+    myMap.geoObjects.add(placemark);
+  });
+
+  // ========== 🏫 ШКОЛА №56 — С ССЫЛКОЙ НА ВИРТУАЛЬНЫЙ МУЗЕЙ ==========
+  var schoolPlace = new ymaps.Placemark([53.925523, 27.425027], {
+    balloonContent: '<div class="popup-content">' +
+      '<img class="popup-photo" src="images/school.jpg" onerror="this.style.display=\'none\'">' +
+      '<div class="popup-header">' +
+        '<div class="popup-avatar">' + avatarHTML("images/school.jpg", "🏫") + '</div>' +
+        '<h3>Средняя школа №56 г. Минска</h3>' +
+      '</div>' +
+      '<p>ГУО «Средняя школа №56 г. Минска имени В.И. Игнатенко».<br>ул. Каменногорская, 70.<br>Здесь находится музей «Чернобыль: боль и возрождение» и аллея «40 лет памяти».</p>' +
+      '<span class="tag orange">Школа · Музей</span>' +
+      '<a class="museum-btn" href="' + MUSEUM_URL + '" target="_blank" onclick="event.stopPropagation();">🏛️ Перейти в виртуальный музей</a>' +
+    '</div>',
+    hintContent: createHoverCard("images/school.jpg", "🏫",
+      'Средняя школа №56',
+      'Нажмите на ссылку, чтобы открыть виртуальный музей',
+      'school', true)
+  }, {
+    preset: 'islands#yellowIcon'
+  });
+  myMap.geoObjects.add(schoolPlace);
+
+  // ========== АЛЛЕЯ ПАМЯТИ ==========
+  var alley = new ymaps.Placemark([53.92534, 27.42561], {
+    balloonContent: '<div class="popup-content">' +
+      '<img class="popup-photo" src="images/alley.jpg" onerror="this.style.display=\'none\'">' +
+      '<div class="popup-header">' +
+        '<div class="popup-avatar">' + avatarHTML("images/alley.jpg", "🌳") + '</div>' +
+        '<h3>Аллея «40 лет памяти»</h3>' +
+      '</div>' +
+      '<p>Заложена 24.04.2026 на пришкольной территории. Шефство пионерской дружины имени В.И. Игнатенко.</p>' +
+      '<span class="tag green">Живой мемориал</span>' +
+    '</div>',
+    hintContent: createHoverCard("images/alley.jpg", "🌳", 'Аллея «40 лет памяти»', 'Заложена 24.04.2026. Живой мемориал.', 'alley', false)
+  }, { preset: 'islands#greenIcon' });
+  myMap.geoObjects.add(alley);
+
+  // ========== ЗОНЫ ОТЧУЖДЕНИЯ ==========
+  myMap.geoObjects.add(new ymaps.Circle(
+    [[51.3894, 30.0994], 30000],
+    { hintContent: '10-км зона ЧАЭС' },
+    { fillColor: 'rgba(142, 68, 173, 0.15)', strokeColor: '#8e44ad', strokeWidth: 2 }
+  ));
+  myMap.geoObjects.add(new ymaps.Circle(
+    [[51.3894, 30.0994], 60000],
+    { hintContent: '30-км зона ЧАЭС' },
+    { fillColor: 'rgba(142, 68, 173, 0.08)', strokeColor: '#8e44ad', strokeWidth: 1 }
+  ));
+
+  // ========== МАРШРУТ ==========
+  myMap.geoObjects.add(new ymaps.Polyline([
+    [53.9006, 27.5590], [53.8167, 28.9833], [51.7833, 30.2500], [51.4056, 30.0547]
+  ], { hintContent: "Маршрут памяти: Минск → Березино → Брагин → Припять" },
+     { strokeColor: '#f39c12', strokeWidth: 3, strokeStyle: 'dash' }));
+}
+</script>
+
+</body>
+</html>
